@@ -73,17 +73,17 @@ impl Model {
             height: source_area.height,
         };
         // Walk over every formula
-        let cells = self.get_all_cells();
+        let cells = self.get_all_cells().collect::<Vec<_>>();
         for cell in cells {
             if let Some(f) = self
                 .workbook
-                .worksheet(cell.index)
+                .worksheet(cell.sheet)
                 .expect("Worksheet must exist")
                 .cell(cell.row, cell.column)
                 .expect("Cell must exist")
                 .get_formula()
             {
-                let sheet = cell.index;
+                let sheet = cell.sheet;
                 let row = cell.row;
                 let column = cell.column;
 

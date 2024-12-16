@@ -72,6 +72,7 @@ pub(crate) enum CellState {
 }
 
 /// A parsed formula for a defined name
+#[derive(Clone)]
 pub(crate) enum ParsedDefinedName {
     /// CellReference (`=C4`)
     CellReference(CellReferenceIndex),
@@ -96,6 +97,7 @@ pub(crate) enum ParsedDefinedName {
 /// * A list of cells with its status (evaluating, evaluated, not evaluated)
 /// * A dictionary with the shared strings and their indices.
 ///   This is an optimization for large files (~1 million rows)
+#[derive(Clone)]
 pub struct Model {
     /// A Rust internal representation of an Excel workbook
     pub workbook: Workbook,
@@ -121,6 +123,7 @@ pub struct Model {
 
 // FIXME: Maybe this should be the same as CellReference
 /// A struct pointing to a cell
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct CellIndex {
     /// Sheet index (0-indexed)
     pub index: u32,
@@ -1702,42 +1705,59 @@ impl Model {
         }
     }
 
-    /// Returns a list of all cells
-    pub fn get_all_cells(&self) -> Vec<CellIndex> {
-        let mut cells = Vec::new();
-        for (index, sheet) in self.workbook.worksheets.iter().enumerate() {
-            let mut sorted_rows: Vec<_> = sheet.sheet_data.keys().collect();
-            sorted_rows.sort_unstable();
-            for row in sorted_rows {
-                let row_data = &sheet.sheet_data[row];
-                let mut sorted_columns: Vec<_> = row_data.keys().collect();
-                sorted_columns.sort_unstable();
-                for column in sorted_columns {
-                    cells.push(CellIndex {
-                        index: index as u32,
-                        row: *row,
-                        column: *column,
-                    });
-                }
-            }
-        }
-        cells
+    /// Returns a list of all cells in the model
+    pub fn get_all_cells(&self) -> impl Iterator<Item = CellReferenceIndex> + '_ {
+        self.workbook
+            .worksheets
+            .iter()
+            .enumerate()
+            .flat_map(|(index, _)| self.get_all_cells_in_sheet(index as u32))
+    }
+
+    /// Returns a list of all cells in a sheet
+    pub fn get_all_cells_in_sheet(
+        &self,
+        sheet_index: u32,
+    ) -> impl Iterator<Item = CellReferenceIndex> + '_ {
+        let sheet = &self.workbook.worksheets[sheet_index as usize];
+        let mut sorted_rows: Vec<_> = sheet.sheet_data.keys().collect();
+        sorted_rows.sort_unstable();
+
+        sorted_rows.into_iter().flat_map(move |row| {
+            let row_data = &sheet.sheet_data[row];
+            let mut sorted_columns: Vec<_> = row_data.keys().collect();
+            sorted_columns.sort_unstable();
+
+            sorted_columns
+                .into_iter()
+                .map(move |column| CellReferenceIndex {
+                    sheet: sheet_index,
+                    row: *row,
+                    column: *column,
+                })
+        })
     }
 
     /// Evaluates the model with a top-down recursive algorithm
     pub fn evaluate(&mut self) {
+        let cells = self.get_all_cells();
+        self.evaluate_partial_iter(cells.collect::<Vec<CellReferenceIndex>>().into_iter());
+    }
+
+    /// Evaluates the model with a top-down recursive algorithm.
+    /// This is a private method that takes an iterator of cells.
+    fn evaluate_partial_iter(&mut self, cells: impl Iterator<Item = CellReferenceIndex>) {
         // clear all computation artifacts
         self.cells.clear();
-
-        let cells = self.get_all_cells();
-
         for cell in cells {
-            self.evaluate_cell(CellReferenceIndex {
-                sheet: cell.index,
-                row: cell.row,
-                column: cell.column,
-            });
+            self.evaluate_cell(cell);
         }
+    }
+
+    /// Evaluates the model with a top-down recursive algorithm
+    /// but only for the given cells.
+    pub fn evaluate_partial(&mut self, cells: &[CellReferenceIndex]) {
+        self.evaluate_partial_iter(cells.iter().cloned());
     }
 
     /// Removes the content of the cell but leaves the style.
@@ -1854,6 +1874,19 @@ impl Model {
                 sheet_id: worksheet.sheet_id,
             })
             .collect()
+    }
+
+    /// Returns data about the worksheets
+    pub fn get_worksheets_properties_iter(&self) -> impl Iterator<Item = SheetProperties> + '_ {
+        self.workbook
+            .worksheets
+            .iter()
+            .map(|worksheet| SheetProperties {
+                name: worksheet.get_name(),
+                state: worksheet.state.to_string(),
+                color: worksheet.color.clone(),
+                sheet_id: worksheet.sheet_id,
+            })
     }
 
     /// Returns markup representation of the given `sheet`.

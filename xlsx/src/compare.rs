@@ -56,7 +56,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
     let mut diffs = Vec::new();
     let cells = model1.get_all_cells();
     for cell in cells {
-        let sheet = cell.index;
+        let sheet = cell.sheet;
         let row = cell.row;
         let column = cell.column;
         let cell1 = &model1
@@ -85,7 +85,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
             ) => {
                 if !numbers_are_close(*value1, *value2, eps) {
                     diffs.push(Diff {
-                        sheet_name: ws1[cell.index as usize].clone(),
+                        sheet_name: ws1[cell.sheet as usize].clone(),
                         row,
                         column,
                         value1: cell1.clone(),
@@ -101,7 +101,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                 // FIXME: We should compare the actual value, not just the index
                 if value1 != value2 {
                     diffs.push(Diff {
-                        sheet_name: ws1[cell.index as usize].clone(),
+                        sheet_name: ws1[cell.sheet as usize].clone(),
                         row,
                         column,
                         value1: cell1.clone(),
@@ -117,7 +117,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                 // FIXME: We should compare the actual value, not just the index
                 if value1 != value2 {
                     diffs.push(Diff {
-                        sheet_name: ws1[cell.index as usize].clone(),
+                        sheet_name: ws1[cell.sheet as usize].clone(),
                         row,
                         column,
                         value1: cell1.clone(),
@@ -133,7 +133,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
                 // FIXME: We should compare the actual value, not just the index
                 if index1 != index2 {
                     diffs.push(Diff {
-                        sheet_name: ws1[cell.index as usize].clone(),
+                        sheet_name: ws1[cell.sheet as usize].clone(),
                         row,
                         column,
                         value1: cell1.clone(),
@@ -144,7 +144,7 @@ pub fn compare(model1: &Model, model2: &Model) -> CompareResult<Vec<Diff>> {
             }
             (_, _) => {
                 diffs.push(Diff {
-                    sheet_name: ws1[cell.index as usize].clone(),
+                    sheet_name: ws1[cell.sheet as usize].clone(),
                     row,
                     column,
                     value1: cell1.clone(),

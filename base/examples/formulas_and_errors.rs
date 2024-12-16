@@ -24,7 +24,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     for cell in cells {
         if let Some(cell) = model
             .workbook
-            .worksheet(cell.index)?
+            .worksheet(cell.sheet)?
             .cell(cell.row, cell.column)
         {
             if cell.get_type() == CellType::ErrorValue {
