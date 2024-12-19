@@ -1756,7 +1756,7 @@ impl Model {
 
     /// Evaluates the model with a top-down recursive algorithm
     /// but only for the given cells.
-    pub fn evaluate_partial(&mut self, cells: &[CellReferenceIndex]) {
+    pub fn evaluate_cells(&mut self, cells: &[CellReferenceIndex]) {
         self.evaluate_partial_iter(cells.iter().cloned());
     }
 
